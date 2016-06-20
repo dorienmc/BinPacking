@@ -1,5 +1,5 @@
 {
-  "name": "bin-packing",
+  "name": "BinPacking",
   "version": "0.0.1",
   "description": "Bundled scripts to pack rectangular shapes in a restricted 2D space",
   "main": "lib/index.js",
@@ -17,9 +17,9 @@
   "author": "Dorien Meijer Cluwen <dorienmc@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/dorienmc/bin-packing/issues"
+    "url": "https://github.com/dorienmc/BinPacking/issues"
   },
-  "homepage": "https://github.com/dorienmc/bin-packing#readme",
+  "homepage": "https://github.com/dorienmc/BinPacking#readme",
   "dependencies": {
     "commander": "^2.9.0",
     "mathjs": "^2.4.2",

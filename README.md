@@ -1,13 +1,18 @@
-# bin-packing
+# BinPacking
 Bundled scripts to pack rectangular shapes in a restricted 2D space
 
 ## Tests
-##[![Build Status](https://travis-ci.org/dorienmc/bin-packing.svg?branch=master)](https://travis-ci.org/dorienmc/bin-packing)
+<!---
+##[![Build Status](https://travis-ci.org/dorienmc/bin-packing.svg?branch=master)](https://travis-ci.org/dorienmc/BinPacking)
+-->
 
 To run the tests, simply run `npm test` after you have done `npm install`. This makes sure you pull all the development
-dependencies like `mocha` and then run the tests. in /test.
+dependencies like `mocha` and then run the tests (which are located in `/test`).
 
 ## CLI Usage
+TODO
+
+<!---
 You can run some functions in the CLI to test them. To install this tool as global NPM package from GitHub, run the following command:
 
 ```
@@ -43,3 +48,4 @@ Get info about the CLI functions.
 ```
 bin-packing --help
 ```
+-->
