@@ -1,0 +1,8 @@
+#!/usr/bin/env node
+
+// 'use strict';
+//
+// process.title = 'bin-packing';
+// process.asCLI = true;
+//
+// require('../cli.js');

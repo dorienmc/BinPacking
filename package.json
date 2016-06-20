@@ -1,0 +1,34 @@
+{
+  "name": "bin-packing",
+  "version": "0.0.1",
+  "description": "Bundled scripts to pack rectangular shapes in a restricted 2D space",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "NODE_ENV=test mocha --harmony test/**/*.test.js",
+    "postversion": "git push && git push --tags"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dorienmc/bin-packing.git"
+  },
+  "keywords": [
+    "bin-packing"
+  ],
+  "author": "Dorien Meijer Cluwen <dorienmc@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dorienmc/bin-packing/issues"
+  },
+  "homepage": "https://github.com/dorienmc/bin-packing#readme",
+  "dependencies": {
+    "commander": "^2.9.0",
+    "mathjs": "^2.4.2",
+    "semver": "^5.0.3"
+  },
+  "engines": {
+    "node": "4.2"
+  },
+  "devDependencies": {
+    "mocha": "^2.3.4"
+  }
+}
