@@ -2,11 +2,10 @@
 
 const assert  				= require('assert');
 const utils					= require('../lib/utils.js');
+const Bed					= require('../lib/utils.js').Bed;
 const Box					= require('../lib/utils.js').Box;
 const Point					= require('../lib/utils.js').Point;
 const stringify				= utils.stringify;
-const hull					= require('../lib/hull.js');
-const Bed					= require('../lib/addBox.js').Bed;
 
 describe('Point class', () => {
 	describe('Constructor', () => {
@@ -81,13 +80,14 @@ describe('Box class', () => {
 			var b = new Box(5, 10);
 			assert.equal(b.stringify(), '(-2.5, -5) by (2.5, 5)');
 		});
+		//TODO: Convert Box2 to Box
 	});
 });
 
 describe('Convex hull algorithm', () => {
 	it('Convex hull around Box(5,10) should equal its corners (in ccw order starting at minpoint)', () => {
 		var boxes = [new Box(5, 10)];
-		var convhull = hull.convexHullBox(boxes);
+		var convhull = utils.convexHullBox(boxes);
 		var boxh = boxes[0].getHull();
 		assert(convhull[0].equals(boxh[0]));
 		assert(convhull[1].equals(boxh[1]));
@@ -96,7 +96,7 @@ describe('Convex hull algorithm', () => {
 	});
 	describe('Convex hull around two boxes of 5 by 10, one centered at (-2.5,5) the other at (2.5,5)', () => {
 		var boxes = [new Box(5, 10, 2.5, 5), new Box(5, 10, -2.5, 5)];
-		var convhull = hull.convexHullBox(boxes);
+		var convhull = utils.convexHullBox(boxes);
 		it('should have 4 points', () => {
 			assert.equal(convhull.length, 4);
 		});
@@ -109,7 +109,7 @@ describe('Convex hull algorithm', () => {
 	});
 	describe('Adding a box of 5 by 10 at (2.5,15) the boxes at (-2.5,5) the other at (2.5,5) gives', () => {
 		var boxes = [new Box(5, 10, 2.5, 5), new Box(5, 10, -2.5, 5), new Box(5, 10, 2.5, 15)];
-		var convhull = hull.convexHullBox(boxes);
+		var convhull = utils.convexHullBox(boxes);
 		it('should have 5 points', () => {
 			assert.equal(convhull.length, 5);
 		});
@@ -124,24 +124,24 @@ describe('Convex hull algorithm', () => {
 	describe('Testing if boxes are in the convex hull', () => {
 		var boxes = [new Box(5, 10)];
 		var otherbox = new Box(5, 10, 2.5, 0);
-		var convhull = hull.convexHullBox(boxes);
+		var convhull = utils.convexHullBox(boxes);
 		it('Box(5,10) should be on the hull around this box', () => {
-			assert.equal(hull.insideHull(boxes[0], convhull), 0);
+			assert.equal(utils.insideHull(boxes[0], convhull), 0);
 		});
 		it('Box(5,10) centered at (2.5,0) is not, completely, inside this hull', () => {
-			assert.equal(hull.insideHull(otherbox, convhull), -1);
+			assert.equal(utils.insideHull(otherbox, convhull), -1);
 		});
 		it('The corners (0,-5) and (0,5) are on the hull', () => {
-			assert.equal(hull.insideHull(otherbox.getCorner('dl'), convhull), 0);
-			assert.equal(hull.insideHull(otherbox.getCorner('tl'), convhull), 0);
+			assert.equal(utils.insideHull(otherbox.getCorner('dl'), convhull), 0);
+			assert.equal(utils.insideHull(otherbox.getCorner('tl'), convhull), 0);
 		});
 		it('The corners (5,-5) and (5,5) are outside the hull', () => {
-			assert.equal(hull.insideHull(otherbox.getCorner('dr'), convhull), -1);
-			assert.equal(hull.insideHull(otherbox.getCorner('tr'), convhull), -1);
+			assert.equal(utils.insideHull(otherbox.getCorner('dr'), convhull), -1);
+			assert.equal(utils.insideHull(otherbox.getCorner('tr'), convhull), -1);
 		});
 		it('The origin is inside the hull', () => {
 			var origin = new Point();
-			assert.equal(hull.insideHull(origin, convhull), 1);
+			assert.equal(utils.insideHull(origin, convhull), 1);
 		});
 	});
 });
@@ -288,6 +288,9 @@ describe('Adding boxes to bed', () => {
 
 });
 
+//TODO
+describe('AddBox() function', () => {});
+describe('AddBoxes() function', () => {});
 //TEMPLATE FOR LOOPING OVER IT() STATEMENTS
 // for (var i = 0; i < something.length; i++) {
 //   (function(i) {
