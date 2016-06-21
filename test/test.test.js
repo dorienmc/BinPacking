@@ -6,6 +6,8 @@ const Bed					= require('../lib/utils.js').Bed;
 const Box					= require('../lib/utils.js').Box;
 const Point					= require('../lib/utils.js').Point;
 const stringify				= utils.stringify;
+const addBox				= require('../lib/addBox.js').addBox;
+const addBoxes				= require('../lib/addBox.js').addBoxes;
 
 describe('Point class', () => {
 	describe('Constructor', () => {
@@ -80,7 +82,14 @@ describe('Box class', () => {
 			var b = new Box(5, 10);
 			assert.equal(b.stringify(), '(-2.5, -5) by (2.5, 5)');
 		});
-		//TODO: Convert Box2 to Box
+		it('Converts an object with min and max parameters to a Box', () => {
+			var box2 = {'min': {'x': 3, 'y': 5}, 'max':{'x':6, 'y':7}};
+			var box = utils.Box2ToBox(box2);
+			var centerOfBox = new Point(3 + (6 - 3) / 2, 5 + (7 - 5) / 2);
+			assert.equal(box.height, 7 - 5);
+			assert.equal(box.width, 6 - 3);
+			assert(box.getCenter().equals(centerOfBox));
+		});
 	});
 });
 
@@ -289,8 +298,205 @@ describe('Adding boxes to bed', () => {
 });
 
 //TODO
-describe('AddBox() function', () => {});
-describe('AddBoxes() function', () => {});
+describe('AddBox() function', () => {
+	it('Adds first box in the center of an empty bed', () => {
+		var new_model = {'min': {'x': 3, 'y': 5}, 'max':{'x':6, 'y':7}};
+		var position1 = addBox(new_model, [], 'corner', 10, 10);
+		var position2 = addBox(new_model, [], 'center', 10);
+		assert.equal(position1[0], 5);
+		assert.equal(position1[1], 5);
+		assert.equal(position2[0], 0);
+		assert.equal(position2[1], 0);
+	});
+
+	describe('Adding multiple boxes', () => {
+		var new_model = {'min': {'x': 0, 'y': 0}, 'max':{'x':2, 'y':2}};
+		var current_models = [];
+		var position = [];
+		var exp_posX = [4.5, 4.5, 1.5, 1.5, 1.5, 4.5, 7.5, 7.5, 7.5];
+		var exp_posY = [4.5, 7.5, 7.5, 4.5, 1.5, 1.5, 1.5, 4.5, 7.5];
+
+		for (var i = 0; i < 9; i++) {
+			var pos = addBox(new_model, current_models, 'corner', 9, 9);
+			if (pos != undefined) {
+				position.push(pos);
+				var newBox = {'min': {'x': 0, 'y': 0}, 'max':{'x':2, 'y':2}};
+				newBox.min.x += (pos[0] - 1);
+				newBox.min.y += (pos[1] - 1);
+				newBox.max.x += (pos[0] - 1);
+				newBox.max.y += (pos[1] - 1);
+				current_models.push(newBox);
+			}
+		}
+
+		describe('A bed of 9 x 9', () => {
+			it('Fits 9 boxes of 2 x 2 (margin = 1)', () => {
+				assert.equal(position.length, 9);
+			});
+			describe('which are put in a spiral', () => {
+				for (var i = 0; i < 9; i++) {
+					(function(i) {
+						var msg = `Box ${i} is placed at (${exp_posX[i]}, ${exp_posY[i]})`;
+						it(msg, () => {
+							 assert.equal(position[i][0], exp_posX[i]);
+							 assert.equal(position[i][1], exp_posY[i]);
+						});
+					})(i);
+				}
+			});
+		});
+
+		describe('A round bed of diameter 12', () => {
+			var new_model = {'min': {'x': 0, 'y': 0}, 'max':{'x':2, 'y':2}};
+			var current_models = [];
+			var position = [];
+			var exp_posX = [0, 0, -3, -3, -3, 0, 3, 3, 3];
+			var exp_posY = [0, 3, 3, 0, -3, -3, -3, 0, 3];
+
+			for (var i = 0; i < 9; i++) {
+				var pos = addBox(new_model, current_models, 'center', 12);
+				if (pos != undefined) {
+					position.push(pos);
+					var newBox = {'min': {'x': 0, 'y': 0}, 'max':{'x':2, 'y':2}};
+					newBox.min.x += (pos[0] - 1);
+					newBox.min.y += (pos[1] - 1);
+					newBox.max.x += (pos[0] - 1);
+					newBox.max.y += (pos[1] - 1);
+					current_models.push(newBox);
+				}
+			}
+
+			it('Also fits 9 boxes of 2 x 2 (margin = 1)', () => {
+				assert.equal(position.length, 9);
+			});
+			describe('which are put in a spiral', () => {
+				for (var i = 0; i < 9; i++) {
+					(function(i) {
+						var msg = `Box ${i} is placed at (${exp_posX[i]}, ${exp_posY[i]})`;
+						it(msg, () => {
+							 assert.equal(position[i][0], exp_posX[i]);
+							 assert.equal(position[i][1], exp_posY[i]);
+						});
+					})(i);
+				}
+			});
+		});
+
+		describe('And a round bed of diameter 11', () => {
+			var new_model = {'min': {'x': 0, 'y': 0}, 'max':{'x':2, 'y':2}};
+			var current_models = [];
+			var position = [];
+
+			for (var i = 0; i < 9; i++) {
+				var pos = addBox(new_model, current_models, 'center', 11);
+				if (pos != undefined) {
+					position.push(pos);
+					var newBox = {'min': {'x': 0, 'y': 0}, 'max':{'x':2, 'y':2}};
+					newBox.min.x += (pos[0] - 1);
+					newBox.min.y += (pos[1] - 1);
+					newBox.max.x += (pos[0] - 1);
+					newBox.max.y += (pos[1] - 1);
+					current_models.push(newBox);
+				}
+			}
+			it('cannot fit these 9 boxes of 2x2', () => {
+				assert(position.length != 9);
+			});
+		});
+	});
+});
+
+describe('AddBoxes() function', () => {
+	it('Adds first box in the center of an empty bed', () => {
+		var new_model = {'min': {'x': 3, 'y': 5}, 'max':{'x':6, 'y':7}};
+		var position1 = addBoxes([new_model], [], 'corner', 10, 10);
+		var position2 = addBoxes([new_model], [], 'center', 10);
+		assert.equal(position1[0][0], 5);
+		assert.equal(position1[0][1], 5);
+		assert.equal(position2[0][0], 0);
+		assert.equal(position2[0][1], 0);
+	});
+
+	describe('Adding multiple boxes', () => {
+		var new_model = {'min': {'x': 0, 'y': 0}, 'max':{'x':2, 'y':2}};
+		var new_models = [];
+		var position = [];
+		var exp_posX = [4.5, 4.5, 1.5, 1.5, 1.5, 4.5, 7.5, 7.5, 7.5];
+		var exp_posY = [4.5, 7.5, 7.5, 4.5, 1.5, 1.5, 1.5, 4.5, 7.5];
+
+		for (var i = 0; i < 9; i++) {
+			new_models.push(new_model);
+		}
+		var position = addBoxes(new_models, [], 'corner', 9, 9);
+
+		describe('A bed of 9 x 9', () => {
+			it('Fits 9 boxes of 2 x 2 (margin = 1)', () => {
+				assert.equal(position.length, 9);
+			});
+			describe('which are put in a spiral', () => {
+				for (var i = 0; i < 9; i++) {
+					(function(i) {
+						var msg = `Box ${i} is placed at (${exp_posX[i]}, ${exp_posY[i]})`;
+						it(msg, () => {
+							 assert.equal(position[i][0], exp_posX[i]);
+							 assert.equal(position[i][1], exp_posY[i]);
+						});
+					})(i);
+				}
+			});
+		});
+
+		describe('A round bed of diameter 12', () => {
+			var new_model = {'min': {'x': 0, 'y': 0}, 'max':{'x':2, 'y':2}};
+			var new_models = [];
+			var position = [];
+			var exp_posX = [0, 0, -3, -3, -3, 0, 3, 3, 3];
+			var exp_posY = [0, 3, 3, 0, -3, -3, -3, 0, 3];
+
+			for (var i = 0; i < 9; i++) {
+				new_models.push(new_model);
+			}
+			var position = addBoxes(new_models, [], 'center', 12);
+
+			it('Also fits 9 boxes of 2 x 2 (margin = 1)', () => {
+				assert.equal(position.length, 9);
+			});
+			describe('which are put in a spiral', () => {
+				for (var i = 0; i < 9; i++) {
+					(function(i) {
+						var msg = `Box ${i} is placed at (${exp_posX[i]}, ${exp_posY[i]})`;
+						it(msg, () => {
+							 assert.equal(position[i][0], exp_posX[i]);
+							 assert.equal(position[i][1], exp_posY[i]);
+						});
+					})(i);
+				}
+			});
+		});
+
+		describe('And a round bed of diameter 11', () => {
+			var new_model = {'min': {'x': 0, 'y': 0}, 'max':{'x':2, 'y':2}};
+			var new_models = [];
+			var position = [];
+
+			for (var i = 0; i < 9; i++) {
+				new_models.push(new_model);
+			}
+			var position = addBoxes(new_models, [], 'center', 11);
+			console.log(position);
+
+			it('cannot fit these 9 boxes of 2x2', () => {
+				var hasUndefinedElements = false;
+				for (var i = 0; i < 9; i++) {
+					if (position[i] == undefined) {
+						hasUndefinedElements = true;
+					}
+				}
+				assert(hasUndefinedElements);
+			});
+		});
+	});
+});
 //TEMPLATE FOR LOOPING OVER IT() STATEMENTS
 // for (var i = 0; i < something.length; i++) {
 //   (function(i) {
