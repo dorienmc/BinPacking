@@ -615,5 +615,15 @@ function outsideHull(obj, hull) {
 			return false;
 		}
 	}
+
+	//Also check if hull is completely inside the box, that is neither allowed
+	if (obj.hasOwnProperty('min')) {
+		for (var k = 0; k < hull.length; k++) {
+			//console.log(`${stringify(hull[k])} inside box ${obj.stringify()}?`, insideHull(hull[k], obj.getHull()));
+			if (insideHull(hull[k], getHull(obj)) >= 0)
+				return false;
+		}
+	}
+
 	return true;
 }

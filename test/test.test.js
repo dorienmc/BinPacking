@@ -86,9 +86,9 @@ describe('Box class', () => {
 			var box2 = {'min': {'x': 3, 'y': 5}, 'max':{'x':6, 'y':7}};
 			var box = utils.Box2ToBox(box2);
 			var centerOfBox = new Point(3 + (6 - 3) / 2, 5 + (7 - 5) / 2);
-			assert.equal(box.height, 7 - 5);
-			assert.equal(box.width, 6 - 3);
-			assert(box.getCenter().equals(centerOfBox));
+			var box3 = new Box(6 - 3, 7 - 5);
+			box3.moveTo(centerOfBox);
+			assert(box.equals(box3));
 		});
 	});
 });
@@ -148,9 +148,11 @@ describe('Convex hull algorithm', () => {
 			assert.equal(utils.insideHull(otherbox.getCorner('dr'), convhull), -1);
 			assert.equal(utils.insideHull(otherbox.getCorner('tr'), convhull), -1);
 		});
-		it('The origin is inside the hull', () => {
-			var origin = new Point();
-			assert.equal(utils.insideHull(origin, convhull), 1);
+		it('Box(1,1) centered at (-5,-5) is not inside the hull', () => {
+			var box = new Box(1, 1);
+			box.moveToXY(-5, -5);
+			assert(utils.outsideHull(box, convhull));
+			assert.equal(utils.insideHull(box, convhull), -1);
 		});
 	});
 });
@@ -226,7 +228,7 @@ describe('Adding boxes to bed', () => {
 		});
 	});
 
-	describe('Adding multiple boxes', () => {
+	describe('adding multiple boxes', () => {
 		var bed2 = new Bed('corner', 'rectangular', 9, 9);
 		var position2 = [];
 		for (var i = 0; i < 9; i++) {
@@ -292,7 +294,24 @@ describe('Adding boxes to bed', () => {
 			});
 		});
 
-
+		describe('at the same place', () => {
+			var bed = new Bed('corner', 'rectangular', 3, 3);
+			var box = new Box(1, 1);
+			var box2 = new Box(1, 1);
+			var box3 = new Box(2, 1);
+			box2.moveToXY(1.5, 1.5);
+			box3.moveToXY(1.5, 1.5);
+			bed.addBox(box);
+			it('makes them collide', () => {
+				assert(box.equals(box2));
+				assert(bed.collides(box2));
+				assert(bed.collides(box3));
+			});
+			it('is not possible (according to canPlaceAt())', () => {
+				assert(!bed.canPlaceAt(box2, bed.getCenter()));
+				assert(!bed.canPlaceAt(box3, bed.getCenter()));
+			});
+		});
 	});
 
 });
@@ -483,7 +502,6 @@ describe('AddBoxes() function', () => {
 				new_models.push(new_model);
 			}
 			var position = addBoxes(new_models, [], 'center', 11);
-			console.log(position);
 
 			it('cannot fit these 9 boxes of 2x2', () => {
 				var hasUndefinedElements = false;
