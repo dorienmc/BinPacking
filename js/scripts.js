@@ -13,9 +13,9 @@
 
 /**
  * Add new model to bed
+ * @param bed: json object (see Note 2)
  * @param new_model: json object representing the 2D bounding box around the new model
  * @param current_models: array of json objects representing the models already on the bed
- * @param bed: json object (see Note 2)
  * @param margin: minimal distance between models (set to 1 if undefined, uses same units as xLength)
  */
 function addBox(bed, new_model, current_models, margin) {
@@ -53,7 +53,6 @@ function addBox(bed, new_model, current_models, margin) {
 	for (var i = 0; i < current_models.length; i++) {
 		addBoxAtPosition(bed, current_models[i], getCenter(current_models[i]));
 	}
-	console.log(bed.boxes);
 
 	//Find position for new box
 	var position = addBoxToBed(bed, new_model);
@@ -67,6 +66,69 @@ function addBox(bed, new_model, current_models, margin) {
 	}
 }
 
+/**
+ * Add new model to bed
+ * @param bed: json object (see Note 2)
+ * @param new_models: array of json object representing the 2D bounding box around the new models
+ * @param current_models: array of json objects representing the models already on the bed
+ * @param margin: minimal distance between models (set to 1 if undefined, uses same units as xLength)
+ */
+function addBoxes(bed, new_models, current_models, margin) {
+	//Check input
+	if (!new_models) { console.log('New models not found'); return undefined;}
+	for (var i = 0; i < new_models.length; i++) {
+		if (new_models[i] == undefined) { console.log(`New model ${i} not found`); return undefined;}
+		if (!new_models[i].hasOwnProperty('min')) { console.log(`new_model[${i}].min not found`); return undefined;}
+		if (!new_models[i].hasOwnProperty('max')) { console.log(`new_model[${i}].max not found`); return undefined;}
+	}
+	if (!bed) { console.log('Bed not found'); return undefined;}
+	if (!bed.hasOwnProperty('printerType')) { console.log('bed.printerType not found'); return undefined;}
+	if (!(bed.printerType == 'CARTESIAN' || bed.printerType == 'DELTA')) {
+		console.log('bed.printerType should be either \'CARTESIAN\' or \'DELTA\'');
+		return undefined;
+	}
+	if (!bed.hasOwnProperty('placeOfOrigin')) { console.log('bed.placeOfOrigin not found'); return undefined;}
+	if (!(bed.placeOfOrigin == 'CORNER' || bed.placeOfOrigin == 'CENTER')) {
+		console.log('bed.placeOfOrigin should be either \'CORNER\' or \'CENTER\'');
+		return undefined;
+	}
+	if (!bed.hasOwnProperty('xLength')) { console.log('bed.xLength not found'); return undefined;}
+	if (!(bed.printerType == 'DELTA' || bed.hasOwnProperty('yLength'))) {
+		console.log('bed.yLength not found');
+		return undefined;
+	} //only needed for cartesian printers
+
+	if (current_models == undefined)
+		current_models = [];
+
+	//Set bed margin (if required)
+	if (margin != undefined)
+		setMargin(bed, margin);
+
+	//Place current models
+	if (!isEmpty(bed))
+		bed.boxes = [];
+
+	for (var i = 0; i < current_models.length; i++) {
+		addBoxAtPosition(bed, current_models[i], getCenter(current_models[i]));
+	}
+
+	//Find position for new boxes
+	var positions = [];
+	for (var k = 0; k < new_models.length; k++) {
+		var position = addBoxToBed(bed, new_models[k]);
+
+		//Add position, if there is one
+		if (position != undefined) {
+			positions.push(new THREE.Vector2(position.x, position.y));
+		}
+		else {
+			positions.push(undefined);
+		}
+	}
+
+	return positions;
+}
 
 /************************Other Functions*****************/
 //Get last element in array
@@ -289,7 +351,6 @@ function removeBox(bed) {
 * @param: position, Vector2()
 ****************/
 function addBoxAtPosition(bed, bb, position) {
-	console.log('Add box', bb, 'at position', position);
 	var box = moveTo(bb, position);
 	if (isEmpty(bed)) {
 		bed.boxes = [box];
@@ -340,7 +401,6 @@ function isOnBed(bed, box) {
 ****************/
 function canPlaceAt(bed, box, position) {
 	//Box can be placed at position if it fits on the bed and doesnt collide with any other boxes
-	console.log('check if box can be placed at', position);
 	var newBox = moveTo(box, position);
 	return (isOnBed(bed, newBox) && !collides(bed, newBox));
 }
@@ -380,7 +440,6 @@ function tryAt(bed, place, newBox, oldBox) {
 
 	 //Check if new box can be placed at 'postion'
 	 if (canPlaceAt(bed, newBox, position)) {
-		 console.log('yes', position);
 		 return position;
 	 }
 	 else {
@@ -400,7 +459,6 @@ function addBoxToBed(bed, newBox) {
 
 	//Add first box in center
 	if (isEmpty(bed)) {
-		console.log('Add first model to bed');
 		if (canPlaceAt(bed, newBox, getBedCenter(bed))) {
 			//Place box
 			bed = addBoxAtPosition(bed, newBox, getBedCenter(bed));

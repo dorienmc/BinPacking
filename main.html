@@ -14,18 +14,23 @@
 		<script>
 
 //Input DATA
-var bed = {printerType: 'CARTESIAN', placeOfOrigin: 'CORNER', xLength: 12, yLength:9};
+var bed = {printerType: 'DELTA', placeOfOrigin: 'CORNER', xLength: 12, yLength:9};
 var models = [
 	{min: new THREE.Vector3(0,0,0), max: new THREE.Vector3(2,2,1)},
 	{min: new THREE.Vector3(0,0,0), max: new THREE.Vector3(3,2,1)},
 	{min: new THREE.Vector3(0,0,0), max: new THREE.Vector3(2,3,1)},
 	{min: new THREE.Vector3(0,0,0), max: new THREE.Vector3(3,3,1)},
 ]
+var minDistanceBetweenModels = 0.5;
 
-for(var j = 0; j < models.length; j++){
-	console.log(j,addBox(bed, models[j], getBoxes(bed), 0.5));
-	console.log(getBoxes(bed));
-}
+//Option1. Add models in 1 go
+console.log(addBoxes(bed, models, [], minDistanceBetweenModels));
+
+//Option2. Add models 1 by 1
+// for(var j = 0; j < models.length; j++){
+// 	console.log(j,addBox(bed, models[j], getBoxes(bed), minDistanceBetweenModels));
+// 	console.log(getBoxes(bed));
+// }
 
 
 //DRAW DATA
@@ -57,14 +62,12 @@ var colors = [0x00ccff, 0x0000ff, 0x6600cc, 0xff00ff, 0xff0000, 0xff6600, 0xffff
 for(var i = 0; i < bed.boxes.length; i++){
 	var pos = getCenter(bed.boxes[i]);
 	var size = getSize(bed.boxes[i]);
-	console.log(i, bed.boxes[i], pos);
 	var geometry2 = new THREE.BoxGeometry( size.x, size.y, 1 );
 	var material2 = new THREE.MeshBasicMaterial( { color: colors[i % colors.length] } );
 	var mesh2 = new THREE.Mesh( geometry2, material2 );
 	mesh2.position.set(pos.x,pos.y,1);
 	group.add(mesh2);
 }
-console.log(group);
 scene.add(group);
 
 camera.position.z = 15;
