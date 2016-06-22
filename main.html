@@ -12,17 +12,23 @@
 		<script src="js/three.js"></script>
 		<script src="js/scripts.js"></script>
 		<script>
-var bb = {min: new THREE.Vector3(0,0,0), max: new THREE.Vector3(2,2,1)};
-console.log(bb);
-var bed = {printerType: 'CARTESIAN', placeOfOrigin: 'CORNER', xLength: 9, yLength:9};
-console.log(bed);
-for(var j = 0; j < 1; j++){
-	console.log(j,addBox(bed, bb, getBoxes(bed)));
+
+//Input DATA
+var bed = {printerType: 'CARTESIAN', placeOfOrigin: 'CORNER', xLength: 12, yLength:9};
+var models = [
+	{min: new THREE.Vector3(0,0,0), max: new THREE.Vector3(2,2,1)},
+	{min: new THREE.Vector3(0,0,0), max: new THREE.Vector3(3,2,1)},
+	{min: new THREE.Vector3(0,0,0), max: new THREE.Vector3(2,3,1)},
+	{min: new THREE.Vector3(0,0,0), max: new THREE.Vector3(3,3,1)},
+]
+
+for(var j = 0; j < models.length; j++){
+	console.log(j,addBox(bed, models[j], getBoxes(bed), 0.5));
 	console.log(getBoxes(bed));
 }
 
 
-//Show example
+//DRAW DATA
 var scene = new THREE.Scene();
 var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
@@ -31,32 +37,39 @@ renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
 
 //Bed
-var geometry = new THREE.BoxGeometry( 9, 9, 1 );
+var geometry;// = new THREE.BoxGeometry( bed.xLength, bed.yLength, 1 );
+if(bed.printerType == 'CARTESIAN') {
+	console.log(bed.xLength, bed.yLength);
+	geometry = new THREE.BoxGeometry( bed.xLength, bed.yLength, 1 );
+}
+else{
+	geometry = new THREE.CircleGeometry(6, 24);
+}
 var material = new THREE.MeshBasicMaterial( { color: 0xD3D3D3 } );
 var cube = new THREE.Mesh( geometry, material );
-cube.position.set(4.5,4.5,0);
+cube.position.set(getBedCenter(bed).x,getBedCenter(bed).y,0);
 scene.add( cube );
 
 //Boxes
 var group = new THREE.Object3D();
-group.position.set(0,0, 0);
-var geometry2 = new THREE.BoxGeometry( 2, 2, 1 );
-var material2 = new THREE.MeshBasicMaterial( { color: 0x003366 } );
-var mesh2 = new THREE.Mesh( geometry2, material2 );
+var colors = [0x00ccff, 0x0000ff, 0x6600cc, 0xff00ff, 0xff0000, 0xff6600, 0xffff00, 0x99ff33, 0x006600];
 
 for(var i = 0; i < bed.boxes.length; i++){
 	var pos = getCenter(bed.boxes[i]);
+	var size = getSize(bed.boxes[i]);
 	console.log(i, bed.boxes[i], pos);
-	var instance = mesh2.clone();
-	instance.position.set(pos.x,pos.y,1);
-	group.add(instance);
+	var geometry2 = new THREE.BoxGeometry( size.x, size.y, 1 );
+	var material2 = new THREE.MeshBasicMaterial( { color: colors[i % colors.length] } );
+	var mesh2 = new THREE.Mesh( geometry2, material2 );
+	mesh2.position.set(pos.x,pos.y,1);
+	group.add(mesh2);
 }
 console.log(group);
 scene.add(group);
 
-camera.position.z = 7;
+camera.position.z = 15;
 camera.position.y = 5;
-camera.position.x = 4;
+camera.position.x = 0
 
 function render() {
 	requestAnimationFrame( render );

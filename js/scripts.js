@@ -47,6 +47,9 @@ function addBox(bed, new_model, current_models, margin) {
 		setMargin(bed, margin);
 
 	//Place current models
+	if (!isEmpty(bed))
+		bed.boxes = [];
+
 	for (var i = 0; i < current_models.length; i++) {
 		addBoxAtPosition(bed, current_models[i], getCenter(current_models[i]));
 	}
