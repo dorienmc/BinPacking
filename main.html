@@ -12,14 +12,58 @@
 		<script src="js/three.js"></script>
 		<script src="js/scripts.js"></script>
 		<script>
-var a = new THREE.Vector2( 0, 1 );
-var b = new THREE.Vector2( 1, 0 );
-var c = new THREE.Vector2( 1, 1 );
-console.log(cross(a,b,c));
-var obj = new THREE.Object3D();
-console.log(obj);
-var bb = {min: new THREE.Vector3(0,0,0), max: new THREE.Vector3(1,1,1)};
-console.log(getCorner(bb));
+var bb = {min: new THREE.Vector3(0,0,0), max: new THREE.Vector3(2,2,1)};
+console.log(bb);
+var bed = {printerType: 'CARTESIAN', placeOfOrigin: 'CORNER', xLength: 9, yLength:9};
+console.log(bed);
+for(var j = 0; j < 1; j++){
+	console.log(j,addBox(bed, bb, getBoxes(bed)));
+	console.log(getBoxes(bed));
+}
+
+
+//Show example
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize( window.innerWidth, window.innerHeight );
+document.body.appendChild( renderer.domElement );
+
+//Bed
+var geometry = new THREE.BoxGeometry( 9, 9, 1 );
+var material = new THREE.MeshBasicMaterial( { color: 0xD3D3D3 } );
+var cube = new THREE.Mesh( geometry, material );
+cube.position.set(4.5,4.5,0);
+scene.add( cube );
+
+//Boxes
+var group = new THREE.Object3D();
+group.position.set(0,0, 0);
+var geometry2 = new THREE.BoxGeometry( 2, 2, 1 );
+var material2 = new THREE.MeshBasicMaterial( { color: 0x003366 } );
+var mesh2 = new THREE.Mesh( geometry2, material2 );
+
+for(var i = 0; i < bed.boxes.length; i++){
+	var pos = getCenter(bed.boxes[i]);
+	console.log(i, bed.boxes[i], pos);
+	var instance = mesh2.clone();
+	instance.position.set(pos.x,pos.y,1);
+	group.add(instance);
+}
+console.log(group);
+scene.add(group);
+
+camera.position.z = 7;
+camera.position.y = 5;
+camera.position.x = 4;
+
+function render() {
+	requestAnimationFrame( render );
+	renderer.render( scene, camera );
+}
+render();
+
 		</script>
 	</body>
 </html>

@@ -1,24 +1,84 @@
 'use strict';
+/************************MAIN Functions*****************/
+//Note 1: all box/model/boundingbox objects are json objects of the form
+// {min: THREE.Vector3(), max: THREE.Vector3()} (or Vector2())
+//Which is also the output of BufferGeometry().boundingbox
+
+//Note 2: the bed is a json object with at least the parameters:
+// printerType: either 'CARTESIAN' or 'DELTA'
+// placeOfOrigin: either 'CORNER' or 'CENTER' (only 'CENTER' for delta printers)
+// xLength: int or float (diameter for delta printerss)
+// yLength: int or float (or undefined for delta printers)
+//More parameters like 'outline' and 'boxes' will be added to this object
+
+/**
+ * Add new model to bed
+ * @param new_model: json object representing the 2D bounding box around the new model
+ * @param current_models: array of json objects representing the models already on the bed
+ * @param bed: json object (see Note 2)
+ * @param margin: minimal distance between models (set to 1 if undefined, uses same units as xLength)
+ */
+function addBox(bed, new_model, current_models, margin) {
+	//Check input
+	if (!new_model) { console.log('New model not found'); return undefined;}
+	if (!new_model.hasOwnProperty('min')) { console.log('new_model.min not found'); return undefined;}
+	if (!new_model.hasOwnProperty('max')) { console.log('new_model.max not found'); return undefined;}
+	if (!bed) { console.log('Bed not found'); return undefined;}
+	if (!bed.hasOwnProperty('printerType')) { console.log('bed.printerType not found'); return undefined;}
+	if (!(bed.printerType == 'CARTESIAN' || bed.printerType == 'DELTA')) {
+		console.log('bed.printerType should be either \'CARTESIAN\' or \'DELTA\'');
+		return undefined;
+	}
+	if (!bed.hasOwnProperty('placeOfOrigin')) { console.log('bed.placeOfOrigin not found'); return undefined;}
+	if (!(bed.placeOfOrigin == 'CORNER' || bed.placeOfOrigin == 'CENTER')) {
+		console.log('bed.placeOfOrigin should be either \'CORNER\' or \'CENTER\'');
+		return undefined;
+	}
+	if (!bed.hasOwnProperty('xLength')) { console.log('bed.xLength not found'); return undefined;}
+	if (!(bed.printerType == 'DELTA' || bed.hasOwnProperty('yLength'))) {
+		console.log('bed.yLength not found');
+		return undefined;
+	} //only needed for cartesian printers
+	if (current_models == undefined)
+		current_models = [];
+
+	//Set bed margin (if required)
+	if (margin != undefined)
+		setMargin(bed, margin);
+
+	//Place current models
+	for (var i = 0; i < current_models.length; i++) {
+		addBoxAtPosition(bed, current_models[i], getCenter(current_models[i]));
+	}
+	console.log(bed.boxes);
+
+	//Find position for new box
+	var position = addBoxToBed(bed, new_model);
+
+	//Return position, if there is one
+	if (position != undefined) {
+		return new THREE.Vector2(position.x,position.y);
+	}
+	else {
+		return undefined;
+	}
+}
+
+
 /************************Other Functions*****************/
 //Get last element in array
 Array.prototype.last = function() {
 	return this[this.length - 1];
 };
 
-
 /************************POINT Functions*****************/
 //Note: Point2 class is replaced by Vector2() objects
 
-/***************
-* Cross product of three points
-* If bigger then 0 then p2 is left of p0->p1, if negative its right of the line
-* And in case this returns zero all three points are colinear
-****************/
-function cross(p0, p1, p2) {
-	return (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
-}
 
 /************************BOX Functions*****************/
+//Note: Where is talked of a 'box object', a json object of the form
+//{min: new THREE.Vector3(..), max: new THREE.Vector3(..)} is meant.
+
 /***************
 * Get center of box (2D)
 * @param: bb, boundingbox, BufferGeometry().boundingBox
@@ -58,7 +118,7 @@ function getSize(bb) {
 	else if (option == 3 || option == 'dl')
 		return new THREE.Vector2(bb.min.x, bb.min.y);
 	else {
-		return [getCorner(0), getCorner(1), getCorner(2), getCorner(3)];
+		return [getCorner(bb, 0), getCorner(bb, 1), getCorner(bb, 2), getCorner(bb, 3)];
 	}
 }
 
@@ -76,14 +136,30 @@ function getHull(bb) {
 * @param: bb, boundingbox, BufferGeometry().boundingBox
 # @param: p, Vector2()
 * @output: updated boundingbox
+* DOES NOT change the input parameter bb
 ****************/
 function moveTo(bb, p) {
-	var diff = getCenter(bb);
-	diff.sub(p);
-	return {min: bb.min.add(diff), max: bb.max.add(diff)};
+	var diff = new THREE.Vector2(0, 0);
+	diff.subVectors(p, getCenter(bb));
+	var newMin = new THREE.Vector2(bb.min.x,bb.min.y);
+	newMin.add(diff);
+	var newMax = new THREE.Vector2(bb.max.x,bb.max.y);
+	newMax.add(diff);
+	return {min: newMin, max: newMax};
 }
 
-/************************Bed Functions*****************/
+/***************
+* Returns true if both boxes equal each other
+* Eg if their min and max values are the same
+* It ignores the z-values (if there are any)
+****************/
+function equalBoxes(bb1, bb2){
+	return (bb1.min.x == bb2.min.x &&
+		bb1.min.y == bb2.min.y && bb1.max.x == bb2.max.x &&
+		bb1.max.y == bb2.max.y);
+}
+
+// /************************Bed Functions*****************/
 /***************
 * Return center of bed
 * @param: bed, json object
@@ -98,7 +174,7 @@ function getBedCenter(bed) {
 }
 
 /***************
-* Return outline of bed
+* Return outline of bed (sets it if not yet done)
 * @param: bed, json object
 * @output: array of Vector2()
 ****************/
@@ -113,23 +189,24 @@ function getOutline(bed) {
 			return getHull(box);
 		}
 		else {
-			var c_angle = 2 * Math.PI;
+			var c_angle = 2.0 * Math.PI;
 			var outline = [];
+			bed.radius = bed.xLength / 2.0;
 			while (c_angle > 0) {
-				var px = this.radius * Math.sin(c_angle);
-				var py = this.radius * Math.cos(c_angle);
+				var px = bed.radius * Math.sin(c_angle);
+				var py = bed.radius * Math.cos(c_angle);
 				var p = new THREE.Vector2(px, py);
 				outline.push(p);
 				c_angle -= 0.2;
 			}
+			return outline;
 		}
 	}
 }
 
 /***************
-* Set outline of bed, as new parameter in bed
+* Set outline of bed
 * @param: bed, json object
-* @output: updated bed
 ****************/
 function setOutline(bed) {
 	bed.outline = getOutline(bed);
@@ -144,7 +221,6 @@ function setOutline(bed) {
 ****************/
 function setMargin(bed, margin) {
 	bed.margin = margin;
-	return bed;
 }
 
 /***************
@@ -152,7 +228,7 @@ function setMargin(bed, margin) {
 * @param: bed, json object
 * Margin is set to 1 by default
 ****************/
-function getMargin(bed){
+function getMargin(bed) {
 	if(!bed.hasOwnProperty('margin') || bed.margin == undefined){
 		bed.margin = 1;
 	}
@@ -171,6 +247,17 @@ function isEmpty(bed) {
 }
 
 /***************
+* Get boxes on bed
+* @param: bed, json object
+****************/
+function getBoxes(bed){
+	if (!bed.hasOwnProperty('boxes')) {
+		bed.boxes = [];
+	}
+	return bed.boxes;
+}
+
+/***************
 * Get last added box on bed
 * @param: bed, json object
 ****************/
@@ -186,11 +273,10 @@ function getLastBox(bed) {
 * Remove last added box on bed
 * @param: bed, json object
 ****************/
-function removeBox() {
+function removeBox(bed) {
 	if (!isEmpty(bed)) {
 		bed.boxes.pop();
 	}
-	return bed;
 }
 
 /***************
@@ -200,11 +286,12 @@ function removeBox() {
 * @param: position, Vector2()
 ****************/
 function addBoxAtPosition(bed, bb, position) {
+	console.log('Add box', bb, 'at position', position);
 	var box = moveTo(bb, position);
 	if (isEmpty(bed)) {
 		bed.boxes = [box];
 	}
-	else{
+	else {
 		bed.boxes.push(box);
 	}
 	return bed;
@@ -215,13 +302,17 @@ function addBoxAtPosition(bed, bb, position) {
 * @param: bed, json object
 * @param: box, json object
 ****************/
-function collides(bed, boxes){
-	if(isEmpty(bed)){
+function collides(bed, box) {
+	if (isEmpty(bed)) {
 		return false;
 	}
 
 	for (var i = 0; i < bed.boxes.length; i++) {
-		if (insideHull(box, getHull(bed.boxes[i])) >= 0) {
+		//Check if boxes are the same (then outsideHull will return)
+		if (equalBoxes(box, bed.boxes[i])) {
+			return true;
+		}
+		if (!outsideHull(box, getHull(bed.boxes[i]))) {
 			return true;
 		}
 	}
@@ -234,6 +325,7 @@ function collides(bed, boxes){
 * @param: box, json object
 ****************/
 function isOnBed(bed, box) {
+	setOutline(bed);
 	return (insideHull(box, getOutline(bed)) >= 0);
 }
 
@@ -243,10 +335,11 @@ function isOnBed(bed, box) {
 * @param: box, json object
 * @param: position, Vector2()
 ****************/
-function canPlaceAt(bed, box, position){
+function canPlaceAt(bed, box, position) {
 	//Box can be placed at position if it fits on the bed and doesnt collide with any other boxes
+	console.log('check if box can be placed at', position);
 	var newBox = moveTo(box, position);
-	return (isOnBed(bed, newBox) && !this.collides(bed, newBox));
+	return (isOnBed(bed, newBox) && !collides(bed, newBox));
 }
 
 /**
@@ -284,6 +377,7 @@ function tryAt(bed, place, newBox, oldBox) {
 
 	 //Check if new box can be placed at 'postion'
 	 if (canPlaceAt(bed, newBox, position)) {
+		 console.log('yes', position);
 		 return position;
 	 }
 	 else {
@@ -303,16 +397,16 @@ function addBoxToBed(bed, newBox) {
 
 	//Add first box in center
 	if (isEmpty(bed)) {
-		if (canPlaceAt(bed, newBox, getCenter(bed))) {
+		console.log('Add first model to bed');
+		if (canPlaceAt(bed, newBox, getBedCenter(bed))) {
 			//Place box
-			bed = addBoxAtPosition(bed, newBox, getCenter(bed));
-			return getCenter(bed);
+			bed = addBoxAtPosition(bed, newBox, getBedCenter(bed));
+			return getBedCenter(bed);
 		}
 		return undefined;
 	}
 
 	//Try directions
-
 	for (var i = 0; i < strategy.length; i++) {
 		var position = tryAt(bed, strategy[i], newBox, getLastBox(bed));
 		if (position != undefined) {
@@ -324,6 +418,15 @@ function addBoxToBed(bed, newBox) {
 }
 
 /************************Convex hull Functions*****************/
+/***************
+* Cross product of three points
+* If bigger then 0 then p2 is left of p0->p1, if negative its right of the line
+* And in case this returns zero all three points are colinear
+****************/
+function cross(p0, p1, p2) {
+	return (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
+}
+
 /**
 * Monotone chain algorithm for find the convex hull of a set of points
 * @param points An array of Vector2() objects
@@ -403,7 +506,7 @@ function insideHull(obj, hull) {
 		//Loop over all the edges of the convex hull, if the point is left of all of them then it is inside
 		for (var j = 0; j < hull.length; j++) {
 			var tmp = cross(hull[j], hull[(j + 1) % hull.length], points[i]);
-			if (tmp < 0) {
+			if (tmp < 0) { //Point is to the right of the current edge, hence not inside hull
 				return -1;
 			}
 			else if (tmp == 0) { //Check if point is on the line segment hull[j]->hull[j+1]
@@ -411,7 +514,7 @@ function insideHull(obj, hull) {
 				points[i].x > Math.max(hull[j].x, hull[(j + 1) % hull.length].x) ||
 				points[i].y < Math.min(hull[j].y, hull[(j + 1) % hull.length].y) ||
 				points[i].y > Math.max(hull[j].y, hull[(j + 1) % hull.length].y)) {
-					return -1;
+					return -1; //Point is on line through hull[j]->hull[j+1] but not between them, hence its outside the hull
 				}
 				else {
 					pointsOnEdge += 1;
@@ -422,4 +525,34 @@ function insideHull(obj, hull) {
 		}
 	}
 	return (pointsOnEdge == points.length ? 0 : 1);
+}
+
+/**
+* Determines if point or box is outside hull
+* @param obj a Vector2() or box json object
+* Returns true if completely not inside hull (can touch it)
+*/
+function outsideHull(obj, hull) {
+	var points = [];
+	if (obj.hasOwnProperty('min')) {
+		points = getCorner(obj, 'all');
+	}
+	else {
+		points.push(obj);
+	}
+
+	for (var i = 0; i < points.length; i++) {
+		//Loop over all the edges of the convex hull, if the point is right of at least one edge its outside the hull
+		var nLeft = 0;
+		for (var j = 0; j < hull.length; j++) {
+			var tmp = cross(hull[j], hull[(j + 1) % hull.length], points[i]);
+			if (tmp > 0) {
+				nLeft += 1;
+			}
+		}
+		if (nLeft == 4) {
+			return false;
+		}
+	}
+	return true;
 }
